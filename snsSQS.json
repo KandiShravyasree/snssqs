@@ -1,0 +1,129 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": " ",
+    "Parameters": {
+      "environmentCode": {
+        "Description": "Environment Code",
+        "Type": "String",
+        "Default": "dev",
+        "AllowedValues": [
+          "dev",
+          "qas",
+          "loa",
+          "stg",
+          "prd"
+        ]
+      },
+      "projectCode": {
+        "Description": "The Project code, example: SKT",
+        "Type": "String",
+        "Default": "test"
+      },
+      "serviceCode": {
+        "Description": "The Template Service Type code, example: app, web, core, db, kv",
+        "Type": "String",
+        "Default": "core"
+      },
+      "sqsStackName":{
+        "Description": "SQS STack Name",
+        "Type": "String"
+    }
+    },
+    "Mappings": {
+      "environment": {
+        "dev": {
+          "char": "d",
+          "awsAccount": "root",
+          "bcp": false
+        },
+        "qas": {
+          "char": "q",
+          "awsAccount": "root",
+          "bcp": false
+        },
+        "loa": {
+          "char": "l",
+          "awsAccount": "root",
+          "bcp": false
+        },
+        "stg": {
+          "char": "s",
+          "awsAccount": "root",
+          "bcp": false
+        },
+        "prd": {
+          "char": "",
+          "awsAccount": "",
+          "bcp": true
+        }
+      }
+    },
+    "Conditions": {},
+    "Resources": {
+      "SKTMySNSTopic": {
+        "Type": "AWS::SNS::Topic",
+        "Properties": {
+          "Subscription": [
+            {
+              "Endpoint": {
+                "Fn::GetAtt": [
+                  "SKTMyQueue1",
+                  "Arn"
+                ]
+              },
+              "Protocol": "sqs"
+            }
+          ]
+        }
+      },
+      "SKTMyQueue1": {
+        "Type": "AWS::SQS::Queue"
+      },
+      "MyQueuePolicy": {
+        "Type": "AWS::SQS::QueuePolicy",
+        "Properties": {
+          "PolicyDocument": {
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": "*",
+                "Action": [
+                  "sqs:SendMessage"
+                ],
+                "Resource": "*",
+                "Condition": {
+                  "ArnEquals": {
+                    "aws:SourceArn": {
+                      "Ref": "SKTMySNSTopic"
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "Queues": [
+            {
+              "Ref": "SKTMyQueue1"
+            }
+          ]
+        }
+      }
+    },
+    "Outputs": {
+      "MySNSTopicTopicARN": {
+        "Value": {
+          "Ref": "SKTMySNSTopic"
+        }
+      },
+      "MyQueue1Info": {
+        "Value": {
+           "Fn::GetAtt": ["SKTMyQueue1", "Arn"]
+        },
+        "Export": {
+          "Name": {
+            "Fn::Sub": "${AWS::StackName}-MyQueue1Info"
+          }
+        }
+      }
+    }
+  }
